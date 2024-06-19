@@ -27,6 +27,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+# Below is the custom user model for the system 
+AUTH_USER_MODEL = 'accounts.User'
 
 # Application definition
 
@@ -38,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'phonenumber_field',
     'accounts',
 ]
 
