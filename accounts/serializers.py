@@ -1,14 +1,10 @@
 from rest_framework import serializers 
-from .models import Depot
-from django.contrib.auth.models import User
+from .models import User
 
-class DepotSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Depot
-        fields = "__all__"
+class LoginSerializer(serializers.Serializer):
+    email = serializers.CharField(required=True)
+    password = serializers.CharField(required=True, write_only=True)
 
-
-class DepotAuthentication(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['username', 'password']
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True, write_only=True)
+    new_password = serializers.CharField(required=True, write_only=True)
