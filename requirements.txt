@@ -1,4 +1,6 @@
 asgiref==3.8.1
 Django==5.0.6
+django-phonenumber-field==7.3.0
 djangorestframework==3.15.1
+phonenumberslite==8.13.39
 sqlparse==0.5.0
