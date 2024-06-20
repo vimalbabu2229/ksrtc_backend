@@ -25,7 +25,10 @@ SECRET_KEY = 'django-insecure-zjk)u)6_6=8$jm4sj9kx3(#e203v9xidedo1v9r77sb#ngc4g(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    'getmevimal1442.pythonanywhere.com', 
+    '127.0.0.1',
+]
 
 # Below is the custom user model for the system 
 AUTH_USER_MODEL = 'accounts.User'
