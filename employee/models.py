@@ -14,7 +14,7 @@ class Employee(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True)
     name = models.CharField(max_length=50)
     pen_number = models.CharField(max_length=50)
-    phone_number = PhoneNumberField(blank=True, unique=True, region='IN')
+    phone_number = PhoneNumberField(unique=True, region='IN')
     designation = models.CharField(choices=EMPLOYEE_TYPE, max_length=2)
     date_of_join = models.DateField()
     on_leave = models.BooleanField(default=False)

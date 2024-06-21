@@ -10,3 +10,20 @@ class Depot(models.Model):
 
     def __str__(self) -> str:
         return self.office
+    
+#____________________________ VEHICLE MODEL _______________________
+
+class Vehicle(models.Model):
+    VEHICLE_TYPE = [
+        ('f', 'Fuel'),
+        ('e', 'Electric')
+    ]
+    reg_no = models.CharField(max_length=50)
+    type = models.CharField(choices=VEHICLE_TYPE, max_length=5)
+    year = models.CharField(max_length=10)
+    is_active = models.BooleanField(default=True)
+    is_available = models.BooleanField(default=True)
+    depot = models.ForeignKey(Depot, on_delete=models.SET_NULL, null=True)
+
+    def __str__(self) -> str:
+        return self.reg_no
