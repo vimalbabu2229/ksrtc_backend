@@ -1,2 +1,10 @@
 _venv
 db.sqlite3
+employee/migrations
+depot/migrations
+accounts/migrations
+core/__pycache__
+api/__pycache__
+accounts/__pycache__
+depot/__pycache__
+employee/__pycache__
