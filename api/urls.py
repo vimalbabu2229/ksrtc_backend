@@ -40,7 +40,7 @@ router.register(r'depot/vehicles', DepotVehicleViewSet, basename='depot_vehicles
 #   PATCH   /api/depot/vehicles/<vehicle_id>
 #   DEL     /api/depot/vehicles/<vehicle_id>
 
-router.register(r'depot/routes', DepotTripsViewSet, basename='depot_routes')
+router.register(r'depot/trips', DepotTripsViewSet, basename='depot_trips')
 # End points :
 # 
 

@@ -1,11 +1,11 @@
 from rest_framework import serializers
-from .models import Depot, Vehicle
+from .models import Depot, Vehicle, Trip
 from  employee.models import Employee 
 
 class DepotSerializer(serializers.ModelSerializer):
     class Meta:
         model = Depot
-        fields = '__all__'
+        fields = ['office', 'ato', 'district']
 
 class EmployeeUserSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -25,3 +25,17 @@ class GetVehicleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vehicle
         fields = ['id', 'reg_no', 'type', 'year', 'is_available']
+
+class TripSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Trip
+        fields = ['id',
+                  'departure_place', 
+                  'departure_time', 
+                  'arrival_place', 
+                  'arrival_time', 
+                  'route', 
+                  'km', 
+                  'running_time',
+                  'status',
+                  ]

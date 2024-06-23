@@ -3,29 +3,28 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
-from .models import Depot, Vehicle
+from .models import Depot, Vehicle, Trip
 from accounts.models import User
 from .serializers import *
 
 # _______________________ MANAGE DEPOT PROFILE _____________________________
 class DepotViewSet(ViewSet):
-    permission_classes = [ IsAuthenticated ]
+    permission_classes = [ IsAuthenticated ]    
 
     # Create depot profile
     def create(self,request):
         user = request.user 
         if user.is_admin :
-            if not Depot.objects.filter(user=user).exists(): # if depot already exist, no need to create 
-                data = request.data.copy()
-                data['user'] = user.id
+            data = request.data
+            if not Depot.objects.filter(user=user).exists():
                 serializer = DepotSerializer(data=data)
                 if serializer.is_valid():
-                    serializer.save()
-                    return Response({'message':'Depot profile successfully created '}, status=status.HTTP_201_CREATED)
+                    serializer.save(user=user)
+                    return Response(serializer.data, status=status.HTTP_201_CREATED)
                 else: # bad request error 
                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            # process files 
-            
+            else:
+                return Response({'error':'Depot already exists'}, status=status.HTTP_409_CONFLICT)
         else : # user is not an admin 
             return Response({'error': 'User has no permission'}, status=status.HTTP_401_UNAUTHORIZED)
         
@@ -42,6 +41,19 @@ class DepotViewSet(ViewSet):
             return Response(data, status=status.HTTP_200_OK)
         except Depot.DoesNotExist:
             return Response({'error': 'Depot profile does not exist. Create profile first..'}, status=status.HTTP_404_NOT_FOUND)
+        
+    @action(detail=False, methods=['patch'], permission_classes=[IsAuthenticated]) 
+    def update_depot(self, request):
+        try:
+            depot = Depot.objects.get(user=request.user.id)
+            serializer = DepotSerializer(depot, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Depot.DoesNotExist:
+            return Response({'error': 'Depot does not exist'}, status=status.HTTP_404_NOT_FOUND)
 
 # ____________________________MANAGE DEPOT EMPLOYEES ____________________________
 class DepotEmployeeViewSet(ViewSet):
@@ -183,6 +195,56 @@ class DepotVehicleViewSet(ModelViewSet):
             return Response({'error': 'Vehicle does not exists'}, status=status.HTTP_404_NOT_FOUND)
       
 # ________________________________MANAGE BUS ROUTES _______________________________
-class DepotTripsViewSet(ViewSet):
+class DepotTripsViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
-    pass
+    queryset = Trip.objects.all()
+    serializer_class = TripSerializer
+
+    def _create(self, user, data):
+        # data['depot'] = user.id
+        serializer = TripSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save(depot=Depot.objects.get(user=user.id))
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+    def _list(self, user, active):
+        if Depot.objects.filter(user=user.id).exists():
+            trips = Trip.objects.filter(depot=user.id, is_active=active)
+            serializer = TripSerializer(trips, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'Depot does not exists'}, status=status.HTTP_404_NOT_FOUND)
+        
+    # Create a new trip
+    def create(self, request, *args, **kwargs):
+        try:
+            return self._create(request.user, request.data.copy())
+        except:
+            return Response({'error': 'Unknown error'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    # List all the current valid trips under the depot 
+    def list(self, request):
+        try:
+            return self._list(request.user, True)
+        except:
+            return Response({'error':'Unknown error occurred'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    # List all the deleted trips under the depot 
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def deleted(self, request):
+        try:
+            return self._list(request.user, False)
+        except:
+            return Response({'error':'Unknown error occurred'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    def destroy(self, request, pk=None):
+        try:
+            trip = Trip.objects.get(pk=pk)
+            trip.is_active = False
+            trip.save()
+            return Response({'message': f'({trip.id}, {trip.departure_place}-{trip.arrival_place}) Trip deleted successfully'}, status=status.HTTP_200_OK)
+        except :
+            return Response({'error':'Unknown error occurred while trying to delete the trip'}, status=status.HTTP_404_NOT_FOUND)
+    

@@ -27,3 +27,21 @@ class Vehicle(models.Model):
 
     def __str__(self) -> str:
         return self.reg_no
+    
+#____________________________ TRIP MODEL _______________________
+class Trip(models.Model):
+    departure_place = models.CharField(max_length=50)
+    departure_time = models.TimeField()
+    arrival_place = models.CharField(max_length=50)
+    arrival_time = models.TimeField()
+    route = models.CharField(max_length=100)
+    km = models.CharField(max_length=10)
+    running_time = models.TimeField()
+    # is_active is used to check whether the trip is currently active or a deleted trip 
+    is_active = models.BooleanField(default=True)
+    # status is used to make a trip temporarily inactive to generate specific duty list 
+    status = models.BooleanField(default=True)
+    depot = models.ForeignKey(Depot, on_delete=models.SET_NULL, null=True)
+
+    def __str__(self) -> str:
+        return f"{self.departure_place} - {self.arrival_place}"
