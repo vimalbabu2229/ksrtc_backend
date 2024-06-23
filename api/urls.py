@@ -3,7 +3,7 @@ from rest_framework.authtoken import views
 from rest_framework import routers
 from accounts.views import AuthViewSet
 from depot.views import DepotViewSet, DepotEmployeeViewSet, DepotVehicleViewSet, DepotTripsViewSet
-
+from employee.views import EmployeeProfileView
 router = routers.DefaultRouter()
 
 # ________________________AUTHENTICATION ROUTER________________________
@@ -43,6 +43,9 @@ router.register(r'depot/vehicles', DepotVehicleViewSet, basename='depot_vehicles
 router.register(r'depot/trips', DepotTripsViewSet, basename='depot_trips')
 # End points :
 # 
+
+# ___________________________ EMPLOYEE ROUTERS _____________________________
+router.register(r'employee/profile', EmployeeProfileView, basename='employee_profile')
 
 
 urlpatterns = [
