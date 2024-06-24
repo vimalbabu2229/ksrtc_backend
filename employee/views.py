@@ -2,7 +2,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet,ViewSet
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated 
-from .models import Employee, Depot
+from .models import Employee
 from .serializers import ProfileSerializer
 
 class EmployeeProfileView(ViewSet):

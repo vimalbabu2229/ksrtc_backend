@@ -3,6 +3,12 @@ Django==5.0.6
 django-cors-headers==4.4.0
 django-phonenumber-field==7.3.0
 djangorestframework==3.15.1
+numpy==2.0.0
+pandas==2.2.2
 phonenumberslite==8.13.39
+python-dateutil==2.9.0.post0
+pytz==2024.1
+six==1.16.0
 sqlparse==0.5.0
+tzdata==2024.1
 whitenoise==6.7.0

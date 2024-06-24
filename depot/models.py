@@ -18,7 +18,7 @@ class Vehicle(models.Model):
         ('f', 'Fuel'),
         ('e', 'Electric')
     ]
-    reg_no = models.CharField(max_length=50)
+    reg_no = models.CharField(max_length=50, unique=True)
     type = models.CharField(choices=VEHICLE_TYPE, max_length=5)
     year = models.CharField(max_length=10)
     is_active = models.BooleanField(default=True)

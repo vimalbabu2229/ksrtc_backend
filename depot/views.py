@@ -3,9 +3,81 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError
+import pandas as pd
 from .models import Depot, Vehicle, Trip
 from accounts.models import User
 from .serializers import *
+
+# __________________________ PROCESS DATASETS _____________________________
+class ProcessDataset:
+    def __init__(self, data) -> None:
+        self.data = data
+
+    # Set the boolean fields
+    def _status_boolean(self, value):
+        mapping = {'true': True, 'false':False, 'yes': True, 'no': False}
+        value = value.lower()
+        mapped_value = mapping.get(value)
+        if isinstance(mapped_value, bool):
+            return mapped_value
+        else :
+            raise ValueError(f" Expected values are ('yes', 'no', 'true', 'false'), but got something else ")
+    
+    # Check the unique fields 
+    def _is_unique(self, df, field):
+        return not df.duplicated(subset=[field]).any()
+    
+    # Get the pandas DataFrame 
+    def _get_df(self):
+        serializer = DataSetSerializer(data=self.data)
+        if serializer.is_valid():
+            dataset = self.data['dataset']
+            try:
+                return pd.read_excel(dataset, dtype=str)
+            except:
+                raise ValidationError(f'Uploaded dataset({dataset.name}) cannot be read')
+        else :
+            raise ValidationError(serializer.errors['dataset'])
+    
+    # Process employee DataFrame
+    def process_employee(self):
+        df = self._get_df()
+        try :
+            df['on_leave'] = df['on_leave'].apply(self._status_boolean)
+        except ValueError as e:
+            error = str(e).strip("['']")
+            raise ValidationError({"on_leave": error})
+        
+        # Check the unique fields contain duplicate values 
+        if not self._is_unique(df, 'email'):
+            raise IntegrityError('(email)field contains duplicate entries')
+        if not self._is_unique(df, 'pen_number'):
+            raise IntegrityError('(pen_number)field contains duplicate entries')
+        if not self._is_unique(df, 'phone_number'):
+            raise IntegrityError('(phone_number) field contains duplicate entries')
+        return df 
+    
+    # process vehicles DataFrame
+    def process_vehicles(self):
+        df = self._get_df()
+        try:
+            df['is_available'] = df['is_available'].apply(self._status_boolean)
+        except ValueError as e:
+            error = str(e).strip("['']")
+            raise ValidationError({"is_available": error})
+        
+        # Check unique fields contain duplicate values 
+        if not self._is_unique(df, 'reg_no'):
+            raise IntegrityError('(reg_no)field contains duplicate entries')
+        
+        return df
+    
+    # process trips DataFrame
+    def process_trips(self):
+        df = self._get_df()
+        return df
 
 # _______________________ MANAGE DEPOT PROFILE _____________________________
 class DepotViewSet(ViewSet):
@@ -61,23 +133,24 @@ class DepotEmployeeViewSet(ViewSet):
 
     def _create(self, user, data):
         user_serializer = EmployeeUserSerializer(data=data)
+        profile_serializer = EmployeeProfileSerializer(data=data)
+
         if user_serializer.is_valid():
-            if not User.objects.filter(email=data['email']).exists():
-                user_data = user_serializer.validated_data
-                User.objects.create_user(email=user_data['email'], password=user_data['date_of_join'].strftime("%d-%m-%Y"))
-
-            employee = User.objects.get(email=data['email'])
-            data['user'] = employee.id
-            data['depot'] = user.id
-
-            profile_serializer = EmployeeProfileSerializer(data=data)
             if profile_serializer.is_valid():
-                profile_serializer.save()
-                return Response({'message': 'Employee created successfully'}, status=status.HTTP_201_CREATED)
+                if not User.objects.filter(email=data['email']).exists():
+                    user_data = user_serializer.validated_data
+                    User.objects.create_user(email=user_data['email'], password=user_data['date_of_join'].strftime("%d-%m-%Y"))
+                employee = User.objects.get(email=data['email'])
+                if not Employee.objects.filter(user=employee.id).exists():
+                    depot = Depot.objects.get(user=user.id)
+                    profile_serializer.save(user=employee , depot=depot)
+                    return profile_serializer.data
+                else:
+                    raise IntegrityError(f'({employee.user.email})Employee already exists')
             else:
-                return Response(profile_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                raise ValidationError(profile_serializer.errors)
         else:
-            return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError(user_serializer.errors)
     
     # Accepts the value of is_active (True, or False)
     def _list(self, user, active):
@@ -89,8 +162,20 @@ class DepotEmployeeViewSet(ViewSet):
     def create(self, request):
         user = request.user 
         if user.is_admin :
-            data = request.data.copy()
-            return self._create(user, data)
+            try:
+                data = request.data.copy()
+                serializer_data = self._create(user, data)
+                return Response(serializer_data, status=status.HTTP_201_CREATED)
+            
+            except ValidationError as e:
+                error = str(e).strip("['']")
+                return Response({'error': error}, status=status.HTTP_400_BAD_REQUEST)
+
+            except IntegrityError as e:
+                error = str(e).strip("['']")
+                return Response({'error': error}, status=status.HTTP_409_CONFLICT)
+
+            
         else : # user is not an admin 
             return Response({'error': 'User has no permission'}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -140,6 +225,37 @@ class DepotEmployeeViewSet(ViewSet):
         except Employee.DoesNotExist:
             return Response({'error': 'Employee does not exist'}, status=status.HTTP_404_NOT_FOUND)
         
+    # Import the data set of employees
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def import_dataset(self, request):
+        try:
+            processor = ProcessDataset(request.data)
+            employee_df = processor.process_employee()
+            # Validate data completely before saving 
+            for row in employee_df.iterrows():
+                user_serializer = UserExistValidatorSerializer(data=dict(row[1]))
+                profile_serializer = EmployeeProfileSerializer(data=dict(row[1]))
+                if user_serializer.is_valid():
+                    if profile_serializer.is_valid():
+                        continue
+                    else:
+                        return Response({'row': (row[0] + 2), 'error':profile_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    return Response({'row': (row[0] + 2), 'error':user_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # save data to database
+            for row in employee_df.iterrows():
+                self._create(request.user, dict(row[1]))
+                
+            return Response({'message': f'Employee dataset imported successfully'}, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            error = str(e).strip("['']")
+            return Response({'error': error}, status=status.HTTP_400_BAD_REQUEST)
+        
+        except IntegrityError as e:
+            error = str(e).strip("['']")
+            return Response({'error': error}, status=status.HTTP_409_CONFLICT)
+       
 # ____________________________MANAGE DEPOT VEHICLES _____________________________
 class DepotVehicleViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -193,7 +309,34 @@ class DepotVehicleViewSet(ModelViewSet):
             return Response({'message': f'({vehicle.reg_no})Vehicle is removed successfully'},status=status.HTTP_200_OK)
         except Vehicle.DoesNotExist:
             return Response({'error': 'Vehicle does not exists'}, status=status.HTTP_404_NOT_FOUND)
-      
+        
+    # Import data set of vehicles
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def import_dataset(self, request):
+        try:
+            processor = ProcessDataset(request.data)
+            vehicle_df = processor.process_vehicles()
+            # Validate data completely before saving 
+            for row in vehicle_df.iterrows():
+                serializer = VehicleSerializer(data=dict(row[1]))
+                if serializer.is_valid():
+                    continue
+                else:
+                    return Response({'row': (row[0] + 2), 'error':serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+               
+            # save data to database
+            for row in vehicle_df.iterrows():
+                self._create(request.user, dict(row[1]))
+                
+            return Response({'message': f'Vehicle dataset imported successfully'}, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            error = str(e).strip("['']")
+            return Response({'error': error}, status=status.HTTP_400_BAD_REQUEST)
+        
+        except IntegrityError as e:
+            error = str(e).strip("['']")
+            return Response({'error': error}, status=status.HTTP_409_CONFLICT)
+    
 # ________________________________MANAGE BUS ROUTES _______________________________
 class DepotTripsViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -247,4 +390,30 @@ class DepotTripsViewSet(ModelViewSet):
             return Response({'message': f'({trip.id}, {trip.departure_place}-{trip.arrival_place}) Trip deleted successfully'}, status=status.HTTP_200_OK)
         except :
             return Response({'error':'Unknown error occurred while trying to delete the trip'}, status=status.HTTP_404_NOT_FOUND)
-    
+        
+    # Import data set of trips
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def import_dataset(self, request):
+        try:
+            processor = ProcessDataset(request.data)
+            vehicle_df = processor.process_trips()
+            # Validate data completely before saving 
+            for row in vehicle_df.iterrows():
+                serializer = TripSerializer(data=dict(row[1]))
+                if serializer.is_valid():
+                    continue
+                else:
+                    return Response({'row': (row[0] + 2), 'error':serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+               
+            # save data to database
+            for row in vehicle_df.iterrows():
+                self._create(request.user, dict(row[1]))
+                
+            return Response({'message': f'Trips dataset imported successfully'}, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            error = str(e).strip("['']")
+            return Response({'error': error}, status=status.HTTP_400_BAD_REQUEST)
+        
+        except IntegrityError as e:
+            error = str(e).strip("['']")
+            return Response({'error': error}, status=status.HTTP_409_CONFLICT)
