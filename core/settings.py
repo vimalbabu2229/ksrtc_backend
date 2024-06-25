@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'accounts',
     'depot', 
     'employee', 
+    'scheduler',
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
