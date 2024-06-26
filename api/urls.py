@@ -1,8 +1,8 @@
 from django.urls import path, include
 from rest_framework import routers
 from accounts.views import AuthViewSet
-from depot.views import DepotViewSet, DepotEmployeeViewSet, DepotVehicleViewSet, DepotTripsViewSet
-from employee.views import EmployeeProfileView
+from depot.views import DepotViewSet, DepotEmployeeViewSet, DepotVehicleViewSet, DepotTripsViewSet, DepotLeaveApplicationsView
+from employee.views import EmployeeProfileView, LeaveApplicationView
 from scheduler.views import DepotScheduleViewSet, EmployeeScheduleViewSet
 
 router = routers.DefaultRouter()
@@ -44,11 +44,18 @@ router.register(r'depot/vehicles', DepotVehicleViewSet, basename='depot_vehicles
 router.register(r'depot/trips', DepotTripsViewSet, basename='depot_trips')
 # End points :
 # 
+router.register(r'depot/leave_applications', DepotLeaveApplicationsView, basename='depot_leave_applications')
+# End points :
+# 
 
 # ___________________________ EMPLOYEE ROUTERS _____________________________
 router.register(r'employee/profile', EmployeeProfileView, basename='employee_profile')
 # End points:
 #   GET     /api/employee/profile/
+
+router.register(r'employee/leave_applications', LeaveApplicationView, basename='employee_leave_applications')
+# End points:
+#
 
 # ___________________________ SCHEDULER ROUTERS _____________________________
 router.register(r'scheduler/depot', DepotScheduleViewSet, basename='depot_scheduler')

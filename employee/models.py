@@ -22,3 +22,16 @@ class Employee(models.Model):
 
     def __str__(self) -> str:
         return self.name
+    
+#________________________EMPLOYEE MODEL____________________________
+class LeaveApplication(models.Model):
+    leave_type = models.CharField(max_length=50)
+    applied_on = models.DateTimeField(auto_now_add=True)
+    leave_from = models.DateField()
+    leave_till = models.DateField()
+    reason = models.TextField()
+    admin_read = models.BooleanField(default=False)
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
+
+    def __str__(self) -> str:
+        return self.leave_type

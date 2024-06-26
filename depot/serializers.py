@@ -2,7 +2,7 @@ import os
 from rest_framework import serializers
 from django.core.exceptions import ValidationError
 from .models import Depot, Vehicle, Trip
-from  employee.models import Employee 
+from  employee.models import Employee , LeaveApplication
 from accounts.models import User
 
 class DepotSerializer(serializers.ModelSerializer):
@@ -30,6 +30,7 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     class Meta :
         model = Employee
         fields = [
+            'user',
             'name',
             'pen_number',
             'phone_number',
@@ -86,3 +87,28 @@ class CustomFileField(serializers.FileField):
 
 class DataSetSerializer(serializers.Serializer):
     dataset = CustomFileField(allowed_types=['.xlsx'])
+
+
+# Leave Application serializers 
+class LeaveListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LeaveApplication
+        fields = ['id', 'leave_type', 'employee']
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+
+        representation['employee'] = {'id': instance.employee.user_id, 'name':instance.employee.name}
+        return representation
+    
+class LeaveDetailsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LeaveApplication
+        fields = '__all__'
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+
+        representation['employee'] = {'id': instance.employee.user_id, 'name': instance.employee.name}
+        return representation
+    

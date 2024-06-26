@@ -8,6 +8,7 @@ from django.db import IntegrityError
 import pandas as pd
 from .models import Depot, Vehicle, Trip
 from accounts.models import User
+from employee.models import LeaveApplication
 from .serializers import *
 
 # __________________________ PROCESS DATASETS _____________________________
@@ -417,3 +418,27 @@ class DepotTripsViewSet(ModelViewSet):
         except IntegrityError as e:
             error = str(e).strip("['']")
             return Response({'error': error}, status=status.HTTP_409_CONFLICT)
+
+# ________________________________ LEAVE APPLICATIONS _______________________________
+class DepotLeaveApplicationsView(ViewSet):
+    permission_classes=[IsAuthenticated]
+
+    # List leave applications under this depot 
+    def list(self, request):
+        user = request.user
+        leave = LeaveApplication.objects.filter(employee__depot = user.id).order_by('-applied_on')
+        serializer = LeaveListSerializer(leave,many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # Retrieve specific leave application details
+    def retrieve(self, request, pk=None):
+        try:
+            leave = LeaveApplication.objects.get(pk=pk)
+            leave.admin_read = True
+            leave.save()
+
+            serializer = LeaveDetailsSerializer(leave)
+
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except:
+            return Response({'error': 'Cannot find requested application'}, status=status.HTTP_400_BAD_REQUEST)
