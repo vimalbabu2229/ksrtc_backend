@@ -8,3 +8,5 @@ api/__pycache__
 accounts/__pycache__
 depot/__pycache__
 employee/__pycache__
+scheduler/__pycache__
+scheduler/migrations
