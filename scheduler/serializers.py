@@ -14,6 +14,12 @@ class GetDutyListSerializer(serializers.ModelSerializer):
         model = DutyList
         fields =['id', 'name', 'is_active']
 
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['schedules_count'] = DutyListMapper.objects.filter(duty_list=instance.id).count()
+
+        return representation
+
 class ScheduleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Schedule

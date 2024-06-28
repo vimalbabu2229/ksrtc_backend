@@ -57,8 +57,8 @@ class DepotScheduleViewSet(ViewSet):
 
             # pass the list of active drivers and conductors under depot 
             # for the crew scheduling 
-            conductors = Employee.objects.filter(depot=user.id, is_active=True, on_leave=False, designation='c').values_list('user', flat=True)
-            drivers = Employee.objects.filter(depot=user.id, is_active=True, on_leave=False, designation='d').values_list('user', flat=True)
+            conductors = Employee.objects.filter(depot=user.id, user__is_active=True, on_leave=False, designation='c').values_list('user', flat=True)
+            drivers = Employee.objects.filter(depot=user.id, user__is_active=True, on_leave=False, designation='d').values_list('user', flat=True)
             crew_scheduler = ScheduleCrew(conductors, drivers)
 
             # pass active vehicles for vehicle scheduling 
@@ -136,8 +136,8 @@ class DepotScheduleViewSet(ViewSet):
     def schedule_crew(self, request):
         user = request.user
         # Get the available conductors and drivers under this depot 
-        conductors = Employee.objects.filter(depot=user.id, is_active=True, on_leave=False, designation='c').values_list('user', flat=True)
-        drivers = Employee.objects.filter(depot=user.id, is_active=True, on_leave=False, designation='d').values_list('user', flat=True)
+        conductors = Employee.objects.filter(depot=user.id, user__is_active=True, on_leave=False, designation='c').values_list('user', flat=True)
+        drivers = Employee.objects.filter(depot=user.id, user__is_active=True, on_leave=False, designation='d').values_list('user', flat=True)
 
         # Check the availability of employees 
         if not conductors.exists():
@@ -259,7 +259,7 @@ class DepotScheduleViewSet(ViewSet):
 
             if duty_list:
                 # get the duty list information
-                duty_list_serializer = DutyListSerializer(duty_list)
+                duty_list_serializer = GetDutyListSerializer(duty_list)
 
                 schedules = DutyListMapper.objects.filter(duty_list=duty_list.id)
                 schedules_serializer = GetDutyListMapperSerializer(schedules, many=True)
@@ -306,9 +306,12 @@ class EmployeeScheduleViewSet(ViewSet):
     # Get the trip associated with an employee
     def list(self, request):
         user = request.user
-
+        if Employee.objects.get(user=user.id).on_leave:
+            return Response({'error': 'Enjoy your leave days '}, status=status.HTTP_404_NOT_FOUND)
         # get the active duty mapper entry for the employee 
         duty_list_mapper_entry = DutyListMapper.objects.filter(Q(conductor=user.id) | Q(driver=user.id), duty_list__is_active = True)
+        if not duty_list_mapper_entry.exists():
+            return Response({'error': 'A valid schedule cannot be found for you'}, status=status.HTTP_404_NOT_FOUND)
 
         schedule_serializer = GetEmployeeScheduleSerializer(duty_list_mapper_entry[0])
 
