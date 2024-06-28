@@ -218,7 +218,7 @@ class DepotEmployeeViewSet(ViewSet):
                 return Response(serializer.data, status=status.HTTP_200_OK)
             else :
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except Employee.DoesNotExist:
+        except :
             return Response({'error': 'Employee does not exist'}, status=status.HTTP_404_NOT_FOUND)
         
     def destroy(self, request, pk=None):
