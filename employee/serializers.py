@@ -5,7 +5,7 @@ from depot.models import Depot
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Employee
-        fields = ['name', 'pen_number', 'phone_number', 'designation', 'date_of_join', 'on_leave']
+        fields = ['user', 'name', 'pen_number', 'phone_number', 'designation', 'date_of_join', 'on_leave']
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
