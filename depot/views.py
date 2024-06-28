@@ -210,7 +210,7 @@ class DepotEmployeeViewSet(ViewSet):
             
             employee = Employee.objects.filter(pk=pk, user__is_active=True)
             if not employee:
-                raise IntegrityError
+                raise IntegrityError('No user found')
             
             serializer = EmployeeProfileSerializer(employee[0], data=request.data, partial=True)
             if serializer.is_valid():
