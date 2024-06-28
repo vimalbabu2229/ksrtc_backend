@@ -17,7 +17,6 @@ class Employee(models.Model):
     designation = models.CharField(choices=EMPLOYEE_TYPE, max_length=2)
     date_of_join = models.DateField()
     on_leave = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=True)
     depot = models.ForeignKey(Depot, on_delete=models.SET_NULL, null=True)
 
     def __str__(self) -> str:

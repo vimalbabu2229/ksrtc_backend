@@ -52,19 +52,3 @@ class AuthViewSet(viewsets.ViewSet):
                 return Response({'error': 'Old password is invalid'}, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    # Delete User
-    @action(detail=True, methods=['patch'], permission_classes=[IsAuthenticated])
-    def remove(self, request, pk = None):
-        # Only admins are allowed to delete a user 
-        user = request.user
-        employee = User.objects.get(id=pk)
-        if user.is_admin:
-            if not employee.is_superuser and not employee.is_admin:
-                employee.is_active = False
-                employee.save()
-                return Response({'message': 'Employee is successfully removed'}, status=status.HTTP_200_OK)
-            else:
-                return Response({'error': 'You dont have privileges to delete admin user'}, status=status.HTTP_401_UNAUTHORIZED)
-        else:
-            return Response({'error': 'You are not authorized to delete a user'}, status=status.HTTP_401_UNAUTHORIZED)
