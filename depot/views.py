@@ -189,7 +189,7 @@ class DepotEmployeeViewSet(ViewSet):
     
     # Get all the previous employees
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
-    def previous_employees(self, request):
+    def deleted_employees(self, request):
         try:
             return self._list(request.user, False)
         except Employee.DoesNotExist:

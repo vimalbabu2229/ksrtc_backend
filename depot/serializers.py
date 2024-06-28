@@ -30,6 +30,22 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     class Meta :
         model = Employee
         fields = [
+            'name',
+            'pen_number',
+            'phone_number',
+            'designation',
+            'date_of_join', 
+            'on_leave'
+        ]
+
+class GetEmployeeProfileSerializer(serializers.ModelSerializer):
+    date_of_join = serializers.DateField(
+        input_formats=['%d-%m-%Y'],  # Input format
+        format='%d-%m-%Y'            # Output format
+    )
+    class Meta :
+        model = Employee
+        fields = [
             'user',
             'name',
             'pen_number',
