@@ -223,7 +223,7 @@ class DepotEmployeeViewSet(ViewSet):
         
     def destroy(self, request, pk=None):
         try :
-            employee = User.objects.filter(pk=pk, user__is_active=True)
+            employee = User.objects.filter(pk=pk, is_active=True)
             if not employee:
                 raise IntegrityError('No user found')
             employee = employee[0]
