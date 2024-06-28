@@ -223,11 +223,14 @@ class DepotEmployeeViewSet(ViewSet):
         
     def destroy(self, request, pk=None):
         try :
-            employee = User.objects.get(pk=pk)
+            employee = User.objects.filter(pk=pk, user__is_active=True)
+            if not employee:
+                raise IntegrityError('No user found')
+            employee = employee[0]
             employee.is_active = False
             employee.save()
             return Response({'message': f'({employee.email})Employee removed successfully'}, status=status.HTTP_200_OK)
-        except Employee.DoesNotExist:
+        except :
             return Response({'error': 'Employee does not exist'}, status=status.HTTP_404_NOT_FOUND)
         
     # Import the data set of employees
