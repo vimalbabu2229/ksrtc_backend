@@ -108,6 +108,7 @@ class DepotViewSet(ViewSet):
             depot = Depot.objects.get(user=user.id)
             serializer = DepotSerializer(depot)
             data = serializer.data.copy()
+            data['id'] = user.id
             data['email'] = request.user.email
             data['vehicles'] = Vehicle.objects.filter(depot=user.id).count()
             data['employees'] = Employee.objects.filter(depot=user.id, user__is_active=True).count()
@@ -115,14 +116,23 @@ class DepotViewSet(ViewSet):
         except Depot.DoesNotExist:
             return Response({'error': 'Depot profile does not exist. Create profile first..'}, status=status.HTTP_404_NOT_FOUND)
         
-    @action(detail=False, methods=['patch'], permission_classes=[IsAuthenticated]) 
-    def update_depot(self, request):
+    # Update depot details 
+    @action(detail=False, methods=['patch'], permission_classes=[IsAuthenticated])
+    def update_depot(self, request, *args, **kwargs):
+        user = request.user
         try:
             depot = Depot.objects.get(user=request.user.id)
             serializer = DepotSerializer(depot, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
-                return Response(serializer.data, status=status.HTTP_200_OK)
+
+                data = serializer.data.copy()
+                data['id'] = user.id
+                data['email'] = request.user.email
+                data['vehicles'] = Vehicle.objects.filter(depot=user.id).count()
+                data['employees'] = Employee.objects.filter(depot=user.id, user__is_active=True).count()
+
+                return Response(data, status=status.HTTP_200_OK)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Depot.DoesNotExist:
@@ -189,7 +199,7 @@ class DepotEmployeeViewSet(ViewSet):
     
     # Get all the previous employees
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
-    def deleted_employees(self, request):
+    def deleted(self, request):
         try:
             return self._list(request.user, False)
         except Employee.DoesNotExist:
@@ -263,7 +273,11 @@ class DepotEmployeeViewSet(ViewSet):
         except IntegrityError as e:
             error = str(e).strip("['']")
             return Response({'error': error}, status=status.HTTP_409_CONFLICT)
-       
+        
+        except Exception as e :
+            error = str(e).strip("['']")
+            return Response({'error': f"(Unexpected error) ==> {error}"}, status=status.HTTP_400_BAD_REQUEST)
+        
 # ____________________________MANAGE DEPOT VEHICLES _____________________________
 class DepotVehicleViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -275,7 +289,7 @@ class DepotVehicleViewSet(ModelViewSet):
         serializer = VehicleSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
-            return Response({'message': 'successfully added new vehicle'}, status=status.HTTP_201_CREATED)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
@@ -302,20 +316,32 @@ class DepotVehicleViewSet(ModelViewSet):
         
     # Get all the previous vehicles under the depot
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
-    def previous_vehicles(self, request):
+    def deleted(self, request):
         try:
             return self._list(request.user, False)
         except Vehicle.DoesNotExist:
             return Response({'error':'Unknown error occurred'}, status=status.HTTP_404_NOT_FOUND)
         
+    def partial_update(self, request, *args, **kwargs):
+        if kwargs:
+            if Vehicle.objects.filter(pk=kwargs['pk'], is_active=True):
+                return super().partial_update(request, *args, **kwargs)
+            
+            else :
+                return Response({'error': 'Vehicle does not exists'}, status=status.HTTP_404_NOT_FOUND)
+            
     # Remove a vehicle 
     def destroy(self, request, pk=None): #, *args, **kwargs
         try:
-            vehicle = Vehicle.objects.get(pk=pk)
+
+            vehicle = Vehicle.objects.filter(pk=pk, is_active=True)
+            if not vehicle:
+                raise IntegrityError('Vehicle not found')
+            vehicle = vehicle[0]
             vehicle.is_active = False
             vehicle.save()
             return Response({'message': f'({vehicle.reg_no})Vehicle is removed successfully'},status=status.HTTP_200_OK)
-        except Vehicle.DoesNotExist:
+        except :
             return Response({'error': 'Vehicle does not exists'}, status=status.HTTP_404_NOT_FOUND)
         
     # Import data set of vehicles
@@ -344,6 +370,10 @@ class DepotVehicleViewSet(ModelViewSet):
         except IntegrityError as e:
             error = str(e).strip("['']")
             return Response({'error': error}, status=status.HTTP_409_CONFLICT)
+        
+        except Exception as e :
+            error = str(e).strip("['']")
+            return Response({'error': f"(Unexpected error) ==> {error}"}, status=status.HTTP_400_BAD_REQUEST)
     
 # ________________________________MANAGE BUS ROUTES _______________________________
 class DepotTripsViewSet(ModelViewSet):
@@ -390,14 +420,23 @@ class DepotTripsViewSet(ModelViewSet):
         except:
             return Response({'error':'Unknown error occurred'}, status=status.HTTP_400_BAD_REQUEST)
         
+    def partial_update(self, request, *args, **kwargs):
+        if Trip.objects.filter(pk=kwargs['pk'], is_active=True).exists():
+            return super().partial_update(request, *args, **kwargs)
+        else :
+            return Response({'error':'Trip not found '}, status=status.HTTP_404_NOT_FOUND)
+
     def destroy(self, request, pk=None):
         try:
-            trip = Trip.objects.get(pk=pk)
+            trip = Trip.objects.filter(pk=pk, is_active=True)
+            if not trip:
+                raise Exception('Not found')
+            trip = trip[0]
             trip.is_active = False
             trip.save()
             return Response({'message': f'({trip.id}, {trip.departure_place}-{trip.arrival_place}) Trip deleted successfully'}, status=status.HTTP_200_OK)
         except :
-            return Response({'error':'Unknown error occurred while trying to delete the trip'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error':'Trip not found '}, status=status.HTTP_404_NOT_FOUND)
         
     # Import data set of trips
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
@@ -425,6 +464,10 @@ class DepotTripsViewSet(ModelViewSet):
         except IntegrityError as e:
             error = str(e).strip("['']")
             return Response({'error': error}, status=status.HTTP_409_CONFLICT)
+        
+        except Exception as e :
+            error = str(e).strip("['']")
+            return Response({'error': f"(Unexpected error) ==> {error}"}, status=status.HTTP_400_BAD_REQUEST)
 
 # ________________________________ LEAVE APPLICATIONS _______________________________
 class DepotLeaveApplicationsView(ViewSet):
