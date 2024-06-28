@@ -207,7 +207,7 @@ class DepotEmployeeViewSet(ViewSet):
     # Update an employee detail
     def partial_update(self, request, pk=None):
         try:
-            employee = Employee.objects.get(pk=pk)
+            employee = Employee.objects.filter(pk=pk, user__is_active=True)
             serializer = EmployeeProfileSerializer(employee, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
