@@ -156,7 +156,7 @@ class DepotEmployeeViewSet(ViewSet):
     # Accepts the value of is_active (True, or False)
     def _list(self, user, active):
         employees = Employee.objects.filter(depot=user.id, user__is_active=active)
-        serializer = EmployeeProfileSerializer(employees, many=True)
+        serializer = GetEmployeeProfileSerializer(employees, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     # Create new employee
