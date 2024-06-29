@@ -22,7 +22,7 @@ class AuthViewSet(viewsets.ViewSet):
                 token, created = Token.objects.get_or_create(user=user)
                 return Response({'token':token.key}, status=status.HTTP_200_OK)
             else :
-                return Response({'error': 'Invalid Credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+                return Response({'detail': 'Invalid Credentials'}, status=status.HTTP_401_UNAUTHORIZED)
         else :
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -31,9 +31,9 @@ class AuthViewSet(viewsets.ViewSet):
     def logout(self, request):
         try:
             request.user.auth_token.delete()
-            return Response({'message':'Successfully logged out'}, status=status.HTTP_200_OK)
+            return Response({'detail':'Successfully logged out'}, status=status.HTTP_200_OK)
         except :
-            return Response({'error':'Invalid credentials '}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail':'Invalid credentials '}, status=status.HTTP_400_BAD_REQUEST)
     
     # Reset Password
     @action(detail=False, methods=['patch'], permission_classes=[IsAuthenticated])
@@ -47,8 +47,8 @@ class AuthViewSet(viewsets.ViewSet):
             if user.check_password(old_password):
                 user.set_password(new_password)
                 user.save()
-                return Response({'message':'Password changed successfully'}, status=status.HTTP_200_OK)
+                return Response({'detail':'Password changed successfully'}, status=status.HTTP_200_OK)
             else:
-                return Response({'error': 'Old password is invalid'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'detail': 'Old password is invalid'}, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

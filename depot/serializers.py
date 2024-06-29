@@ -109,7 +109,7 @@ class DataSetSerializer(serializers.Serializer):
 class LeaveListSerializer(serializers.ModelSerializer):
     class Meta:
         model = LeaveApplication
-        fields = ['id', 'leave_type', 'employee']
+        fields = ['id', 'leave_type', 'employee', 'admin_read']
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)

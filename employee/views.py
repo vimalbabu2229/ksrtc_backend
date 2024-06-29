@@ -4,24 +4,25 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated 
 from .models import Employee, LeaveApplication
 from .serializers import ProfileSerializer, LeaveApplicationSerializer, LeaveListSerializer
+from accounts.permissions import IsActive
 
 class EmployeeProfileView(ViewSet):
-    permission_classes=[IsAuthenticated]
+    permission_classes=[IsAuthenticated, IsActive]
 
     def list(self, request):
         user = request.user
-        if user.is_active:
-            try:
-                data = Employee.objects.get(user=user.id)
-                serializer = ProfileSerializer(data)
-                return Response(serializer.data, status=status.HTTP_200_OK)
-            except Employee.DoesNotExist:
-                return Response({'error': 'Employee profile does not exist'}, status=status.HTTP_404_NOT_FOUND)
-        else:
-            return Response({'error': 'You are not an active user . Please contact deport admin'}, status=status.HTTP_401_UNAUTHORIZED)
+        try:
+            data = Employee.objects.get(user=user.id)
+            serializer = ProfileSerializer(data)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Employee.DoesNotExist:
+            return Response({'detail': 'Employee profile does not exist'}, status=status.HTTP_404_NOT_FOUND)
+        
+        except Exception as e :
+            return Response({'detail': f'Unexpected Error [{str(e)}]'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class LeaveApplicationView(ViewSet):
-    permission_classes=[IsAuthenticated]
+    permission_classes=[IsAuthenticated, IsActive]
 
     # Create new leave application
     def create(self, request):
@@ -49,16 +50,17 @@ class LeaveApplicationView(ViewSet):
             return Response(serializer.data, status=status.HTTP_200_OK)
         
         except :
-            return Response({'error': 'Cannot find requested application'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': 'Cannot find requested application'}, status=status.HTTP_400_BAD_REQUEST)
     
     # Employee can delete a leave application, before admin review it 
     def destroy(self, request, pk=None):
         try:
             leave = LeaveApplication.objects.get(pk=pk)
             if leave.admin_read:
-                return Response({'error': 'You cannot delete an application already reviewed by admin'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'detail': 'You cannot delete an application already reviewed by admin'}, status=status.HTTP_400_BAD_REQUEST)
             else:
                 leave.delete()
-                return Response({'message':f'Deleted leave application for {leave.leave_type}'}, status=status.HTTP_200_OK)
+                return Response({'detail':f'Deleted leave application for {leave.leave_type}'}, status=status.HTTP_200_OK)
         except :
-            return Response({'error': 'Cannot find requested application'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': 'Cannot find requested application'}, status=status.HTTP_400_BAD_REQUEST)
+        

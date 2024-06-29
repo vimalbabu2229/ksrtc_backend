@@ -10,11 +10,12 @@ from depot.serializers import TripSerializer
 from depot.models import Depot, Vehicle
 from .models import DutyList, DutyListMapper
 from employee.models import Employee
+from accounts.permissions import hasProfile, IsActive, IsAdmin
 
 from .scheduler import ScheduleTrips, ScheduleCrew, ScheduleVehicles
 
 class DepotScheduleViewSet(ViewSet):
-    permission_classes=[IsAuthenticated]
+    permission_classes=[IsAuthenticated, hasProfile, IsActive, IsAdmin]
 
     # create entries in TripSchedulerMapper for a schedule 
     def _set_trip_schedule_mapper(self, trips, schedule):
@@ -41,7 +42,7 @@ class DepotScheduleViewSet(ViewSet):
 
         # Check the request.data contains 'start_place'
         if not 'start_place' in request.data:
-            return Response({'error': 'Missing required field `start_place`'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': 'Missing required field `start_place`'}, status=status.HTTP_400_BAD_REQUEST)
         
         # Get depot admin id 
         user = request.user
@@ -116,9 +117,9 @@ class DepotScheduleViewSet(ViewSet):
                 else:
                     return Response(duty_list_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             else:
-                return Response({'error': 'Failed to generate a schedule'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'detail': 'Failed to generate a schedule'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e :
-            return Response({'error':{str(e)}}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail':{str(e)}}, status=status.HTTP_400_BAD_REQUEST)
         
     # Get all the duty lists under the depot. This includes both active and inactive schedules  
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
@@ -129,7 +130,7 @@ class DepotScheduleViewSet(ViewSet):
             serializer = GetDutyListSerializer(duty_lists, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         else :
-            return Response({'error':'No DutyLists found under your depot'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail':'No DutyLists found under this depot'}, status=status.HTTP_404_NOT_FOUND)
 
     # Re-Schedule crew for already existing Duty list 
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
@@ -141,10 +142,10 @@ class DepotScheduleViewSet(ViewSet):
 
         # Check the availability of employees 
         if not conductors.exists():
-            return Response({'error': 'Conductors are not available for a re-schedule'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': 'Conductors are not available for a re-schedule'}, status=status.HTTP_404_NOT_FOUND)
         
         if not drivers.exists():
-            return Response({'error': 'Drivers are not available for a re-schedule'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': 'Drivers are not available for a re-schedule'}, status=status.HTTP_404_NOT_FOUND)
         
         # create a crew scheduler
         crew_scheduler = ScheduleCrew(conductors, drivers)
@@ -152,12 +153,12 @@ class DepotScheduleViewSet(ViewSet):
         # get current active duty list of the depot 
         duty_list = DutyList.objects.filter(is_active=True, depot=user.id)
         if not duty_list.exists():
-            return Response({'error': 'No valid duty list exist for this depot . Please generate a duty list '}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': 'No valid duty list exist for this depot . Please generate a duty list '}, status=status.HTTP_404_NOT_FOUND)
 
         # get all the duty list mapper entries of the duty list
         duty_list_mappers = DutyListMapper.objects.filter(duty_list=duty_list[0].id)
         if not duty_list_mappers.exists():
-            return Response({'error': 'No duty list mapper objects found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': 'No duty list mapper objects found'}, status=status.HTTP_404_NOT_FOUND)
         
         # CREATE NEW DUTY LIST WITH RE-SCHEDULE
         duty_list_serializer = DutyListSerializer(data=request.data)
@@ -186,7 +187,7 @@ class DepotScheduleViewSet(ViewSet):
                     return Response(duty_list_mapper_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
                 
             # Successfully re-scheduled employees
-            return Response({'message': 'Employee re-schedule successfully completed', 'duty_list': DutyListSerializer(new_duty_list).data}, status=status.HTTP_201_CREATED)
+            return Response({'detail': 'Employee re-schedule successfully completed', 'duty_list': DutyListSerializer(new_duty_list).data}, status=status.HTTP_201_CREATED)
         else:
             return Response(duty_list_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -200,7 +201,7 @@ class DepotScheduleViewSet(ViewSet):
 
         # Check whether any vehicle is available 
         if not vehicles.exists():
-            return Response({'error': 'No vehicles are available for re-schedule'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': 'No vehicles are available for re-schedule'}, status=status.HTTP_404_NOT_FOUND)
         
         # create a new vehicle scheduler  
         vehicle_scheduler = ScheduleVehicles(vehicles)
@@ -208,12 +209,12 @@ class DepotScheduleViewSet(ViewSet):
         # get current active duty list of the depot 
         duty_list = DutyList.objects.filter(is_active=True, depot=user.id)
         if not duty_list.exists():
-            return Response({'error': 'No valid duty list exist for this depot . Please generate a duty list '}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': 'No valid duty list exist for this depot . Please generate a duty list '}, status=status.HTTP_404_NOT_FOUND)
 
         # get all the duty list mapper entries of the duty list
         duty_list_mappers = DutyListMapper.objects.filter(duty_list=duty_list[0].id)
         if not duty_list_mappers.exists():
-            return Response({'error': 'No duty list mapper objects found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': 'No duty list mapper objects found'}, status=status.HTTP_404_NOT_FOUND)
          
         # CREATE NEW DUTY LIST WITH RE-SCHEDULE
         duty_list_serializer = DutyListSerializer(data=request.data)
@@ -243,7 +244,7 @@ class DepotScheduleViewSet(ViewSet):
                     return Response(duty_list_mapper_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
                 
             # Successfully re-scheduled vehicles 
-            return Response({'message': 'Vehicle re-schedule successfully completed', 'duty_list': DutyListSerializer(new_duty_list).data}, status=status.HTTP_201_CREATED)
+            return Response({'detail': 'Vehicle re-schedule successfully completed', 'duty_list': DutyListSerializer(new_duty_list).data}, status=status.HTTP_201_CREATED)
         else:
             return Response(duty_list_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -269,20 +270,22 @@ class DepotScheduleViewSet(ViewSet):
                     'schedules': schedules_serializer.data,
                                  }, status=status.HTTP_200_OK)
             else :
-                return Response({'error': 'Duty list does not exist'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'detail': 'Duty list does not exist'}, status=status.HTTP_400_BAD_REQUEST)
         
         except Exception as e:
-            return Response({'error': f'Failed to retrieve a valid duty list'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': f'Failed to retrieve a valid duty list'}, status=status.HTTP_404_NOT_FOUND)
         
     # Get all the trips in a schedule 
     # ** Used a custom url mapper for below method **
     def get_trips(self, request, pk=None):
         if pk != None:
             schedule_mapper = TripSchedulerMapper.objects.filter(schedule=pk)
+            if not schedule_mapper:
+                return Response({'detail':'No trips can be found under this schedule'}, status=status.HTTP_400_BAD_REQUEST)
             serializer = TripScheduleMapperSerializer(schedule_mapper, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         else:
-            return Response({'error':'Please provide id of the schedule'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail':'Please provide id of the schedule'}, status=status.HTTP_400_BAD_REQUEST)
         
     # Update duty list information 
     def update_duty_list(self, request, pk=None):
@@ -296,22 +299,22 @@ class DepotScheduleViewSet(ViewSet):
                 else:
                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             except :
-                return Response({'error': 'Duty list not found'}, status=status.HTTP_404_NOT_FOUND)
+                return Response({'detail': 'Duty list not found'}, status=status.HTTP_404_NOT_FOUND)
         else :
-            return Response({'error':'Please provide id of the schedule'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail':'Please provide id of the schedule'}, status=status.HTTP_400_BAD_REQUEST)
         
 class EmployeeScheduleViewSet(ViewSet):
-    permission_classes=[IsAuthenticated]
+    permission_classes=[IsAuthenticated, IsActive]
 
     # Get the trip associated with an employee
     def list(self, request):
         user = request.user
         if Employee.objects.get(user=user.id).on_leave:
-            return Response({'error': 'Enjoy your leave days '}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': 'Enjoy your leave days '}, status=status.HTTP_404_NOT_FOUND)
         # get the active duty mapper entry for the employee 
         duty_list_mapper_entry = DutyListMapper.objects.filter(Q(conductor=user.id) | Q(driver=user.id), duty_list__is_active = True)
         if not duty_list_mapper_entry.exists():
-            return Response({'error': 'A valid schedule cannot be found for you'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': 'A valid schedule cannot be found for you'}, status=status.HTTP_404_NOT_FOUND)
 
         schedule_serializer = GetEmployeeScheduleSerializer(duty_list_mapper_entry[0])
 

@@ -9,6 +9,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
+        representation['email'] = instance.user.email
         representation['depot'] = Depot.objects.get(user=instance.depot).office
         return representation
     
